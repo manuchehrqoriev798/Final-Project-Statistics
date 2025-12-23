@@ -2,7 +2,6 @@
 Main Execution Script
 Runs the complete analysis pipeline
 """
-
 import sys
 import os
 
@@ -12,8 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from extract_data import extract_all_data
 from process_data import process_all_data
 from analyze import run_complete_analysis
-from visualize import create_all_visualizations
-from generate_report import generate_all_reports
+from generate_html import create_html_dashboard
 
 
 def main():
@@ -36,15 +34,21 @@ def main():
         print("\n" + "=" * 80)
         print("STEP 1: DATA EXTRACTION")
         print("=" * 80)
-        owid_df, who_df = extract_all_data(country=COUNTRY, save_raw=SAVE_RAW)
+        owid_df, who_df, nyt_df, source_urls = extract_all_data(country=COUNTRY, save_raw=SAVE_RAW)
         
         # Step 2: Process Data
         print("\n" + "=" * 80)
         print("STEP 2: DATA PROCESSING")
         print("=" * 80)
         owid_processed, who_processed, merged_df = process_all_data(
-            owid_df, who_df, country=COUNTRY, save_processed=SAVE_PROCESSED
+            owid_df, who_df, nyt_df, country=COUNTRY, save_processed=SAVE_PROCESSED
         )
+        
+        # Convert to datetime index if needed
+        import pandas as pd
+        if 'date' in merged_df.columns:
+            merged_df['date'] = pd.to_datetime(merged_df['date'])
+            merged_df = merged_df.set_index('date').sort_index()
         
         # Step 3: Statistical Analysis
         print("\n" + "=" * 80)
@@ -52,17 +56,11 @@ def main():
         print("=" * 80)
         analysis_results = run_complete_analysis(merged_df)
         
-        # Step 4: Visualizations
+        # Step 4: Create HTML Dashboard
         print("\n" + "=" * 80)
-        print("STEP 4: CREATING VISUALIZATIONS")
+        print("STEP 4: CREATING HTML DASHBOARD")
         print("=" * 80)
-        create_all_visualizations(merged_df, analysis_results, country=COUNTRY)
-        
-        # Step 5: Generate Reports
-        print("\n" + "=" * 80)
-        print("STEP 5: GENERATING REPORTS")
-        print("=" * 80)
-        generate_all_reports(merged_df, analysis_results)
+        create_html_dashboard(merged_df, analysis_results, source_urls, owid_df, who_df, nyt_df, save_path="index.html")
         
         # Final Summary
         print("\n" + "=" * 80)
@@ -70,15 +68,14 @@ def main():
         print("=" * 80)
         print("\nOutput Files:")
         print("  - Raw Data: data/raw/")
-        print("  - Processed Data: data/processed/")
-        print("  - Visualizations: visualizations/")
-        print("  - Reports: results/")
-        print("\nKey Findings:")
+        print("  - Processed Data: data/processed/merged_data_clean_weekly.csv")
+        print("  - Interactive Dashboard: index.html")
         
         cond = analysis_results.get("conditional", {})
         p_high = cond.get("p_I_high", 0)
         p_low = cond.get("p_I_low", 0)
         
+        print("\nKey Findings:")
         print(f"  - High vaccination days infection probability: {p_high:.4f}")
         print(f"  - Low vaccination days infection probability: {p_low:.4f}")
         
@@ -99,4 +96,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

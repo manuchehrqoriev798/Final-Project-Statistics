@@ -1,324 +1,187 @@
 """
 Data Processing Module
 Cleans, processes, and aggregates COVID-19 data
+Uses NY Times data for better quality
 """
-
 import pandas as pd
 import numpy as np
+import requests
+from io import StringIO
 import os
 from datetime import datetime
 
 
-def filter_country_data(owid_df, who_df, country="United States"):
+def get_better_covid_data(nyt_df, owid_df, country="United States", save_path="data/processed/merged_data_clean_weekly.csv"):
     """
-    Filter data for a specific country
+    Process COVID-19 data from NY Times, OWID, and WHO
+    Filter to peak COVID period: 2020-2022
+    Aggregate all data to weekly (sum for cases/deaths, mean for vaccination)
+    
+    Args:
+        nyt_df: NY Times DataFrame
+        owid_df: OWID DataFrame (for vaccination data)
+        country: Country name (default: United States)
+        save_path: Path to save cleaned data
+    
+    Returns:
+        Clean weekly DataFrame
+    """
+    print("=" * 60)
+    print("PROCESSING COVID-19 DATA FROM ALL SOURCES")
+    print("=" * 60)
+    
+    print("\n1. Processing NY Times COVID-19 data...")
+    try:
+        # Use provided NY Times data
+        nyt_us = nyt_df.copy()
+        print(f"   ✓ Loaded {len(nyt_us):,} rows from NY Times")
+        
+        # Convert date
+        nyt_us['date'] = pd.to_datetime(nyt_us['date'])
+        nyt_us = nyt_us.sort_values('date')
+        
+        print(f"   Date range: {nyt_us['date'].min().date()} to {nyt_us['date'].max().date()}")
+        
+        # Filter to peak COVID period: 2020-2022 (the heavy years)
+        print("\n2. Filtering to peak COVID period (2020-2022)...")
+        peak_period = nyt_us[(nyt_us['date'] >= '2020-01-01') & (nyt_us['date'] <= '2022-12-31')].copy()
+        print(f"   ✓ Filtered to {len(peak_period):,} days")
+        print(f"   Date range: {peak_period['date'].min().date()} to {peak_period['date'].max().date()}")
+        
+        # Get vaccination data from OWID (they have better vaccination data)
+        print("\n3. Getting vaccination data from OWID...")
+        try:
+            us_owid = owid_df[owid_df['location'] == 'United States'].copy()
+            us_owid['date'] = pd.to_datetime(us_owid['date'])
+            
+            # Filter to same period
+            us_owid = us_owid[(us_owid['date'] >= '2020-01-01') & (us_owid['date'] <= '2022-12-31')].copy()
+            
+            # Merge vaccination data
+            peak_period = peak_period.merge(
+                us_owid[['date', 'people_vaccinated_per_hundred', 'people_vaccinated', 
+                        'total_vaccinations', 'people_fully_vaccinated']],
+                on='date',
+                how='left'
+            )
+            
+            # Calculate vaccination rate
+            peak_period['vaccination_rate'] = peak_period['people_vaccinated_per_hundred'] / 100.0
+            peak_period['vaccination_rate'] = peak_period['vaccination_rate'].ffill().fillna(0)
+            peak_period['vaccination_rate'] = peak_period['vaccination_rate'].clip(0, 1)
+            
+            print(f"   ✓ Merged vaccination data")
+        except Exception as e:
+            print(f"   ⚠ Could not get vaccination data: {e}")
+            peak_period['vaccination_rate'] = 0.0
+        
+        # NY Times data has cumulative cases, need to calculate daily new cases
+        peak_period = peak_period.sort_values('date')
+        peak_period['new_cases'] = peak_period['cases'].diff().fillna(peak_period['cases'].iloc[0])
+        peak_period['new_deaths'] = peak_period['deaths'].diff().fillna(peak_period['deaths'].iloc[0])
+        
+        # Ensure non-negative (sometimes data corrections cause negative)
+        peak_period['new_cases'] = peak_period['new_cases'].clip(lower=0)
+        peak_period['new_deaths'] = peak_period['new_deaths'].clip(lower=0)
+        
+        # Create infection indicator
+        peak_period['I'] = (peak_period['new_cases'] > 0).astype(int)
+        
+        # Drop cumulative columns
+        peak_period = peak_period.drop(columns=['cases', 'deaths'])
+        
+        # Ensure complete daily series
+        date_range = pd.date_range(start=peak_period['date'].min(), end=peak_period['date'].max(), freq='D')
+        complete_dates = pd.DataFrame({'date': date_range})
+        peak_period = complete_dates.merge(peak_period, on='date', how='left')
+        
+        # Fill missing values appropriately
+        peak_period['new_cases'] = peak_period['new_cases'].fillna(0)
+        peak_period['new_deaths'] = peak_period['new_deaths'].fillna(0)
+        peak_period['I'] = peak_period['I'].fillna(0)
+        
+        # Forward fill vaccination data
+        vacc_cols = ['vaccination_rate', 'people_vaccinated', 'people_vaccinated_per_hundred']
+        for col in vacc_cols:
+            if col in peak_period.columns:
+                peak_period[col] = peak_period[col].ffill().fillna(0)
+        
+        # Set date as index
+        peak_period = peak_period.set_index('date').sort_index()
+        
+        # Aggregate to weekly (WHO is already weekly, NY Times and OWID are daily - convert to weekly)
+        print(f"\n4. Aggregating to weekly data...")
+        weekly_data = peak_period.resample('W').agg({
+            'new_cases': 'sum',  # Sum cases for the week
+            'new_deaths': 'sum',  # Sum deaths for the week
+            'I': lambda x: 1 if x.sum() > 0 else 0,  # 1 if any infection in the week
+            'vaccination_rate': 'mean',  # Average vaccination rate for the week
+            'people_vaccinated': 'mean',
+            'people_vaccinated_per_hundred': 'mean'
+        })
+        
+        # Keep only columns that exist
+        for col in ['people_vaccinated', 'people_vaccinated_per_hundred']:
+            if col not in weekly_data.columns:
+                weekly_data[col] = 0
+        
+        print(f"   ✓ Aggregated {len(peak_period):,} daily records to {len(weekly_data):,} weekly records")
+        
+        print(f"\n5. Final weekly dataset:")
+        print(f"   Total weeks: {len(weekly_data):,}")
+        print(f"   Weeks with cases > 0: {(weekly_data['new_cases'] > 0).sum():,}")
+        print(f"   Total cases: {weekly_data['new_cases'].sum():,.0f}")
+        print(f"   Average vaccination rate: {weekly_data['vaccination_rate'].mean():.4f}")
+        print(f"   Max vaccination rate: {weekly_data['vaccination_rate'].max():.4f}")
+        print(f"   Missing values: {weekly_data.isnull().sum().sum()}")
+        
+        # Save clean data
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        weekly_data.reset_index().to_csv(save_path, index=False)
+        
+        print(f"\n✓ Saved clean weekly data to: {save_path}")
+        print(f"✓ Data covers: {weekly_data.index.min().date()} to {weekly_data.index.max().date()}")
+        print(f"✓ Note: All data sources converted to weekly aggregation (daily sources aggregated, WHO was already weekly)")
+        
+        return weekly_data.reset_index()
+        
+    except Exception as e:
+        print(f"\n❌ Error processing data: {e}")
+        raise
+
+
+def process_all_data(owid_df, who_df, nyt_df, country="United States", save_processed=True):
+    """
+    Process all data sources and create clean weekly dataset
+    (All sources aggregated to weekly: OWID and NY Times from daily, WHO was already weekly)
     
     Args:
         owid_df: OWID DataFrame
         who_df: WHO DataFrame
-        country: Country name to filter
-    
-    Returns:
-        Tuple of filtered DataFrames
-    """
-    # OWID uses "United States", WHO uses "United States of America"
-    country_mapping = {
-        "United States": ("United States", "United States of America"),
-        "USA": ("United States", "United States of America"),
-    }
-    
-    if country in country_mapping:
-        owid_name, who_name = country_mapping[country]
-    else:
-        owid_name = country
-        who_name = country
-    
-    # Filter OWID data
-    owid_filtered = owid_df[owid_df["location"] == owid_name].copy()
-    
-    # Filter WHO data
-    who_filtered = who_df[who_df["Country"] == who_name].copy()
-    
-    print(f"Filtered data for {country}:")
-    print(f"  OWID: {len(owid_filtered)} rows")
-    print(f"  WHO: {len(who_filtered)} rows")
-    
-    return owid_filtered, who_filtered
-
-
-def clean_owid_data(df):
-    """
-    Clean and process OWID data
-    
-    Args:
-        df: OWID DataFrame
-    
-    Returns:
-        Cleaned DataFrame
-    """
-    df = df.copy()
-    
-    # Convert date to datetime
-    df["date"] = pd.to_datetime(df["date"])
-    
-    # Forward fill vaccination data (carry forward last known value)
-    df["people_vaccinated"] = df["people_vaccinated"].ffill()
-    
-    # Fill missing new_cases with 0
-    df["new_cases"] = df["new_cases"].fillna(0)
-    
-    # Compute vaccination rate
-    if "population" in df.columns and "people_vaccinated" in df.columns:
-        df["vaccination_rate"] = df["people_vaccinated"] / df["population"]
-        df["vaccination_rate"] = df["vaccination_rate"].fillna(0)
-    
-    # Define binary infection variable
-    df["I"] = (df["new_cases"] > 0).astype(int)
-    
-    # Set date as index for easier resampling
-    df = df.set_index("date")
-    
-    return df
-
-
-def clean_who_data(df):
-    """
-    Clean and process WHO data
-    
-    Args:
-        df: WHO DataFrame
-    
-    Returns:
-        Cleaned DataFrame
-    """
-    df = df.copy()
-    
-    # Rename columns for consistency
-    df = df.rename(columns={
-        "Date_reported": "date",
-        "New_cases": "new_cases"
-    })
-    
-    # Convert date to datetime
-    df["date"] = pd.to_datetime(df["date"])
-    
-    # Define binary infection variable
-    df["I"] = (df["new_cases"] > 0).astype(int)
-    
-    # Set date as index
-    df = df.set_index("date")
-    
-    return df
-
-
-def aggregate_by_period(df, period="W", column="I"):
-    """
-    Aggregate data by time period (daily, weekly, monthly)
-    Includes all relevant columns for comprehensive analysis
-    
-    Args:
-        df: DataFrame with datetime index
-        period: Period for aggregation ('D', 'W', 'ME' for monthly)
-        column: Primary column to aggregate
-    
-    Returns:
-        Aggregated DataFrame with all relevant metrics
-    """
-    # Select columns to aggregate
-    cols_to_agg = {}
-    
-    # Always include the primary column
-    if column in df.columns:
-        cols_to_agg[column] = ["sum", "mean", "count"]
-    
-    # Include vaccination rate if available
-    if "vaccination_rate" in df.columns:
-        cols_to_agg["vaccination_rate"] = ["mean", "max", "min"]
-    
-    # Include new cases if available
-    if "new_cases" in df.columns:
-        cols_to_agg["new_cases"] = ["sum", "mean", "max"]
-    
-    # Include people vaccinated if available
-    if "people_vaccinated" in df.columns:
-        cols_to_agg["people_vaccinated"] = ["mean", "max"]
-    
-    if period == "D":
-        return df.copy()
-    elif period == "W":
-        if not cols_to_agg:
-            return pd.DataFrame({'date': df.index}).set_index('date')
-        aggregated = df[list(cols_to_agg.keys())].resample("W").agg(cols_to_agg)
-        aggregated = aggregated.reset_index()
-        # Flatten column names properly
-        new_cols = []
-        for col in aggregated.columns:
-            if isinstance(col, tuple):
-                if col[1]:
-                    new_cols.append(f"{col[0]}_{col[1]}")
-                else:
-                    new_cols.append(col[0])
-            else:
-                new_cols.append(col)
-        aggregated.columns = new_cols
-        return aggregated
-    elif period == "M" or period == "ME":
-        if not cols_to_agg:
-            return pd.DataFrame({'date': df.index}).set_index('date')
-        aggregated = df[list(cols_to_agg.keys())].resample("ME").agg(cols_to_agg)
-        aggregated = aggregated.reset_index()
-        # Flatten column names properly
-        new_cols = []
-        for col in aggregated.columns:
-            if isinstance(col, tuple):
-                if col[1]:
-                    new_cols.append(f"{col[0]}_{col[1]}")
-                else:
-                    new_cols.append(col[0])
-            else:
-                new_cols.append(col)
-        aggregated.columns = new_cols
-        return aggregated
-    else:
-        if not cols_to_agg:
-            return pd.DataFrame({'date': df.index}).set_index('date')
-        aggregated = df[list(cols_to_agg.keys())].resample(period).agg(cols_to_agg)
-        aggregated = aggregated.reset_index()
-        new_cols = []
-        for col in aggregated.columns:
-            if isinstance(col, tuple):
-                if col[1]:
-                    new_cols.append(f"{col[0]}_{col[1]}")
-                else:
-                    new_cols.append(col[0])
-            else:
-                new_cols.append(col)
-        aggregated.columns = new_cols
-        return aggregated
-
-
-def merge_datasets(owid_df, who_df):
-    """
-    Merge OWID and WHO datasets
-    
-    Args:
-        owid_df: Cleaned OWID DataFrame
-        who_df: Cleaned WHO DataFrame
-    
-    Returns:
-        Merged DataFrame
-    """
-    # Reset index to make date a column for merging
-    owid_reset = owid_df[["vaccination_rate", "I", "new_cases", "people_vaccinated"]].reset_index()
-    who_reset = who_df[["new_cases", "I"]].reset_index()
-    
-    # Merge on date
-    merged = pd.merge(
-        owid_reset,
-        who_reset[["date", "I"]],
-        on="date",
-        how="inner",
-        suffixes=("_owid", "_who")
-    )
-    
-    # Create combined I column (use OWID I as primary, fallback to WHO I)
-    if "I_owid" in merged.columns:
-        merged["I"] = merged["I_owid"]
-    elif "I_who" in merged.columns:
-        merged["I"] = merged["I_who"]
-    else:
-        # If neither exists, create from new_cases
-        merged["I"] = (merged.get("new_cases_owid", merged.get("new_cases", 0)) > 0).astype(int)
-    
-    # Set date as index again
-    merged = merged.set_index("date")
-    
-    print(f"Merged dataset: {len(merged)} rows")
-    
-    return merged
-
-
-def process_all_data(owid_df, who_df, country="United States", save_processed=True):
-    """
-    Complete data processing pipeline
-    
-    Args:
-        owid_df: Raw OWID DataFrame
-        who_df: Raw WHO DataFrame
-        country: Country to process
+        nyt_df: NY Times DataFrame
+        country: Country name
         save_processed: Whether to save processed data
     
     Returns:
-        Tuple of (processed_owid, processed_who, merged_df)
+        Clean weekly DataFrame
     """
     print("=" * 60)
     print("DATA PROCESSING")
     print("=" * 60)
     
-    # Filter by country
-    owid_filtered, who_filtered = filter_country_data(owid_df, who_df, country)
+    # Process data from all 3 sources
+    print("\nProcessing data from NY Times, OWID, and WHO...")
+    clean_df = get_better_covid_data(nyt_df, owid_df, country=country)
     
-    # Clean data
-    print("\nCleaning OWID data...")
-    owid_cleaned = clean_owid_data(owid_filtered)
-    
-    print("Cleaning WHO data...")
-    who_cleaned = clean_who_data(who_filtered)
-    
-    # Merge datasets
-    print("\nMerging datasets...")
-    merged_df = merge_datasets(owid_cleaned, who_cleaned)
-    
-    # Save processed data
-    if save_processed:
-        os.makedirs("data/processed", exist_ok=True)
-        
-        owid_cleaned.reset_index().to_csv(
-            "data/processed/owid_processed.csv", index=False
-        )
-        who_cleaned.reset_index().to_csv(
-            "data/processed/who_processed.csv", index=False
-        )
-        merged_df.reset_index().to_csv(
-            "data/processed/merged_data.csv", index=False
-        )
-        
-        print("\nProcessed data saved to data/processed/")
-    
-    # Create aggregated datasets
-    print("\nCreating aggregated datasets...")
-    
-    # Weekly aggregation
-    weekly_owid = aggregate_by_period(owid_cleaned, period="W", column="I")
-    weekly_who = aggregate_by_period(who_cleaned, period="W", column="I")
-    
-    # Monthly aggregation
-    monthly_owid = aggregate_by_period(owid_cleaned, period="ME", column="I")
-    monthly_who = aggregate_by_period(who_cleaned, period="ME", column="I")
-    
-    # Add country information to aggregated datasets
-    if save_processed:
-        weekly_owid.insert(0, "country", country)
-        weekly_who.insert(0, "country", country)
-        monthly_owid.insert(0, "country", country)
-        monthly_who.insert(0, "country", country)
-        
-        weekly_owid.to_csv("data/processed/owid_weekly.csv", index=False)
-        weekly_who.to_csv("data/processed/who_weekly.csv", index=False)
-        monthly_owid.to_csv("data/processed/owid_monthly.csv", index=False)
-        monthly_who.to_csv("data/processed/who_monthly.csv", index=False)
-    
-    print("\nProcessing Summary:")
-    print(f"  Processed OWID: {len(owid_cleaned)} rows")
-    print(f"  Processed WHO: {len(who_cleaned)} rows")
-    print(f"  Merged dataset: {len(merged_df)} rows")
-    print(f"  Weekly aggregation: {len(weekly_owid)} periods")
-    print(f"  Monthly aggregation: {len(monthly_owid)} periods")
-    
-    return owid_cleaned, who_cleaned, merged_df
+    return None, None, clean_df
 
 
 if __name__ == "__main__":
-    # This would be called from main.py after extraction
-    print("Data processing module loaded successfully!")
-
+    # Test processing
+    import sys
+    sys.path.insert(0, os.path.dirname(__file__))
+    from extract_data import extract_all_data
+    
+    owid_df, who_df = extract_all_data()
+    clean_df = process_all_data(owid_df, who_df)
+    print("\n✓ Processing completed successfully!")

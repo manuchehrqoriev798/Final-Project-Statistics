@@ -132,6 +132,42 @@ def calculate_binomial_parameters(df, period="W", infection_col="I"):
     return results, actual
 
 
+def calculate_correlation_analysis(df, vaccination_col="vaccination_rate", cases_col="new_cases"):
+    """
+    Calculate correlation between vaccination rate and weekly case counts
+    
+    Args:
+        df: DataFrame with vaccination and case data
+        vaccination_col: Column name for vaccination rate
+        cases_col: Column name for weekly case counts
+    
+    Returns:
+        Dictionary with correlation results
+    """
+    # Calculate Pearson correlation
+    correlation = df[vaccination_col].corr(df[cases_col])
+    
+    # Statistical test for correlation
+    n = len(df)
+    if abs(correlation) < 1:
+        t_stat = correlation * np.sqrt(n - 2) / np.sqrt(1 - correlation**2)
+        p_value = 2 * (1 - stats.t.cdf(abs(t_stat), n - 2))
+    else:
+        t_stat = np.inf if correlation > 0 else -np.inf
+        p_value = 0.0
+    
+    results = {
+        "test_type": "Pearson correlation test",
+        "correlation_coefficient": correlation,
+        "sample_size": n,
+        "t_statistic": t_stat,
+        "p_value": p_value,
+        "significant": p_value < 0.05 if not np.isnan(p_value) else False
+    }
+    
+    return results
+
+
 def perform_statistical_tests(df, infection_col="I", vaccination_col="vaccination_rate", threshold=0.5):
     """
     Perform statistical tests to compare high vs low vaccination groups
@@ -219,8 +255,16 @@ def run_complete_analysis(df, infection_col="I", vaccination_col="vaccination_ra
     print(f"   Expected variance: {binomial_weekly['expected_variance']:.3f}")
     print(f"   Actual variance: {binomial_weekly['actual_variance']:.3f}")
     
-    # Statistical tests
-    print("\n4. Performing statistical tests...")
+    # Correlation analysis (main hypothesis test)
+    print("\n4. Performing correlation analysis (main hypothesis test)...")
+    correlation_results = calculate_correlation_analysis(df, vaccination_col, cases_col="new_cases")
+    print(f"   Correlation coefficient (r): {correlation_results['correlation_coefficient']:.4f}")
+    print(f"   T-statistic: {correlation_results['t_statistic']:.4f}")
+    print(f"   P-value: {correlation_results['p_value']:.6f}")
+    print(f"   Significant: {correlation_results['significant']}")
+    
+    # Statistical tests (conditional probability - for reference)
+    print("\n5. Performing conditional probability tests (for reference)...")
     test_results = perform_statistical_tests(df, infection_col, vaccination_col)
     print(f"   Z-statistic: {test_results['z_statistic']:.4f}")
     print(f"   P-value: {test_results['p_value']:.4f}")
@@ -231,7 +275,8 @@ def run_complete_analysis(df, infection_col="I", vaccination_col="vaccination_ra
         "bernoulli": bernoulli,
         "conditional": conditional,
         "binomial_weekly": binomial_weekly,
-        "statistical_tests": test_results,
+        "correlation_analysis": correlation_results,  # Main hypothesis test
+        "statistical_tests": test_results,  # Reference analysis
         "weekly_actual": weekly_actual
     }
     

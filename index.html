@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>COVID-19 Vaccination vs Infection Analysis Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            color: #1a1a1a;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1500px;
+            margin: 40px auto;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+        h2 {
+            text-align: center;
+            color: #6c757d;
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 50px;
+        }
+        .info-box {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%);
+            border: 2px solid rgba(255, 193, 7, 0.4);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .info-box p {
+            color: #2c3e50;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        .data-coverage {
+            background: linear-gradient(135deg, rgba(6, 167, 125, 0.15) 0%, rgba(13, 115, 119, 0.15) 100%);
+            border: 2px solid rgba(6, 167, 125, 0.4);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+        .data-coverage h3 {
+            color: #06A77D;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .data-coverage p {
+            color: #2c3e50;
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+        .sources-section {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            padding: 30px;
+            border-radius: 16px;
+            margin: 40px 0;
+        }
+        .sources-section h3 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .source-item {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .source-item strong {
+            color: #667eea;
+            font-size: 18px;
+        }
+        .source-item a {
+            color: #06A77D;
+            text-decoration: none;
+            word-break: break-all;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .source-item a:hover {
+            text-decoration: underline;
+        }
+        .data-links {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(6, 167, 125, 0.3);
+            text-align: center;
+        }
+        .data-links a {
+            color: #06A77D;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 600;
+            padding: 10px 20px;
+            background: rgba(6, 167, 125, 0.1);
+            border-radius: 6px;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .data-links a:hover {
+            background: rgba(6, 167, 125, 0.2);
+            transform: translateY(-2px);
+        }
+        .chart-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 30px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        canvas {
+            width: 100%;
+            height: 400px;
+            display: block;
+        }
+        .hypothesis-box, .conclusion-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            padding: 40px;
+            border-radius: 16px;
+            margin: 40px 0;
+        }
+        .hypothesis-box h2, .conclusion-box h2 {
+            color: #667eea;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 30px;
+            border-radius: 16px;
+            border: 2px solid rgba(46, 134, 171, 0.2);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #2E86AB 0%, #06A77D 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .stat-label {
+            font-size: 16px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .viz-explanation {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .viz-explanation h3 {
+            color: #06A77D;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .viz-explanation p {
+            color: #495057;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>COVID-19 Vaccination vs Infection Analysis</h1>
+        <h2>Statistical Analysis Dashboard</h2>
+        
+        <div class="info-box">
+            <p><strong></strong> This website is automatically generated from the latest data. When the data sources are updated and the script is run, this website will be automatically updated with the new information.</p>
+        </div>
+        
+        <div class="hypothesis-box">
+            <h2>Research Hypothesis</h2>
+            <p style="font-size: 18px; line-height: 1.9;">
+                <strong>Research Question:</strong> Is there a significant relationship between vaccination rates and weekly new case counts?<br><br>
+                <strong>Hypothesis:</strong> There is a significant correlation between vaccination rate and weekly new case counts across the analysis period (2020-2022).<br><br>
+                <strong>Statistical Test:</strong> Pearson correlation test (tests whether correlation is significantly different from zero)
+            </p>
+        </div>
+        
+        <div class="sources-section">
+            <h3>📊 Data Sources</h3>
+            <p style="margin-bottom: 20px; color: #495057; font-size: 16px;">
+                This analysis uses data from three reliable sources:
+            </p>
+            <div class="source-item">
+                <strong>1. Our World in Data (OWID)</strong><br>
+                <a href="https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv" target="_blank">https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv</a>
+            </div>
+            <div class="source-item">
+                <strong>2. World Health Organization (WHO)</strong><br>
+                <a href="https://srhdpeuwpubsa.blob.core.windows.net/whdh/COVID/WHO-COVID-19-global-data.csv" target="_blank">https://srhdpeuwpubsa.blob.core.windows.net/whdh/COVID/WHO-COVID-19-global-data.csv</a>
+            </div>
+            <div class="source-item">
+                <strong>3. New York Times COVID-19 Data</strong><br>
+                <a href="https://raw.githubusercontent.com/nytimes/covid-19-data/master/us.csv" target="_blank">https://raw.githubusercontent.com/nytimes/covid-19-data/master/us.csv</a>
+            </div>
+            <div class="data-links">
+                <a href="data/raw/owid_covid_data.csv" download>📁 Download Raw OWID Data</a>
+                <a href="data/raw/who_covid_data.csv" download>📁 Download Raw WHO Data</a>
+                <a href="data/raw/nyt_covid_data.csv" download>📁 Download Raw NY Times Data</a>
+                <a href="data/processed/merged_data_clean_weekly.csv" download>📁 Download Processed Data (Weekly)</a>
+            </div>
+        </div>
+        
+        <div class="data-coverage">
+            <h3>📅 Data Coverage Information</h3>
+            <p><strong>Data Source:</strong> Combined data from OWID, WHO, and New York Times</p>
+            <p><strong>Coverage Period:</strong> January 26, 2020 to January 01, 2023</p>
+            <p><strong>Total Days:</strong> 154 days</p>
+            <p><strong>Data Frequency:</strong> Weekly (All data sources have been converted to weekly aggregation for consistency)</p>
+            <p><strong>Data Aggregation Note:</strong> 
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>OWID:</strong> Originally daily data, aggregated to weekly (sum of cases per week)</li>
+                <li><strong>NY Times:</strong> Originally daily data, aggregated to weekly (sum of cases per week)</li>
+                <li><strong>WHO:</strong> Originally weekly data, used as-is</li>
+            </ul>
+            </p>
+            <p><strong>Geographic Coverage:</strong> United States (While the original data sources contain data for multiple countries, this analysis focuses on the United States during the peak COVID-19 period from 2020 to 2022)</p>
+        </div>
+        
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="stat-value">652,553</div>
+                <div class="stat-label">Mean Weekly Cases</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">438,647</div>
+                <div class="stat-label">Median Weekly Cases</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">815,502</div>
+                <div class="stat-label">Standard Deviation</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">1.000</div>
+                <div class="stat-label">Infection Probability</div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">1. Vaccination Rate Over Time</div>
+            <canvas id="chart1"></canvas>
+            <div class="viz-explanation">
+                <h3>What it shows:</h3>
+                <p>This chart displays how the vaccination coverage rate changed over time from 2020 to 2022. The blue line represents the proportion of the population that was vaccinated. The red dashed horizontal line at 0.5 (50%) is the threshold we use to classify periods as "high vaccination" (above the line) or "low vaccination" (below the line).</p>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">2. Weekly New Cases: Comparison Across All 3 Data Sources</div>
+            <canvas id="chart2"></canvas>
+            <div class="viz-explanation">
+                <h3>What it shows:</h3>
+                <p>This chart compares weekly new COVID-19 cases from all three data sources (OWID in blue, WHO in orange, NY Times in green). All three sources are displayed as weekly data for consistency: OWID and NY Times were aggregated from daily to weekly (sum of cases per week), while WHO was already weekly. This visualization allows us to compare how different data sources report the same metric and validate data consistency across sources.</p>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">3. Conditional Probabilities Comparison</div>
+            <canvas id="chart3"></canvas>
+            <div class="viz-explanation">
+                <h3>What it shows:</h3>
+                <p>This bar chart directly compares the infection probability during two different periods: high vaccination (green bar, V ≥ 0.5) and low vaccination (orange bar, V < 0.5). The height of each bar represents the probability of infection occurring. If vaccination is effective, we expect the green bar (high vaccination) to be lower than the orange bar (low vaccination). The difference between these bars is the key evidence for our hypothesis.</p>
+            </div>
+        </div>
+        
+        <div class="conclusion-box">
+            <h2>Hypothesis Testing Results & Conclusion</h2>
+            <div style="font-size: 18px; line-height: 1.8;">
+                <p><strong>Statistical Test Results (Correlation Analysis):</strong></p>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li><strong>Test:</strong> Pearson correlation test</li>
+                    <li><strong>Correlation Coefficient (r):</strong> 0.1971</li>
+                    <li><strong>T-statistic:</strong> 2.4793</li>
+                    <li><strong>P-value:</strong> 0.014257</li>
+                    <li><strong>Significance Level (α):</strong> 0.05</li>
+                    <li><strong>Result:</strong> REJECT H₀</li>
+                </ul>
+                <p style="margin-top: 25px;"><strong>Key Findings:</strong></p>
+                <ul style="line-height: 2; margin-left: 20px;">
+                    <li>Correlation coefficient: <strong>0.1971</strong> (positive correlation)</li>
+                    <li>Statistical significance: <strong>Significant</strong> (p = 0.0143)</li>
+                    <li>Sample size: <strong>154</strong> weeks</li>
+                </ul>
+                <p style="margin-top: 25px; font-size: 20px; font-weight: bold;">
+                    CONCLUSION: A significant positive correlation was found (r = 0.1971, p = 0.0143). However, this reflects temporal confounding where higher vaccination periods coincided with more transmissible variants (Delta, Omicron), rather than indicating that vaccination increases transmission. This demonstrates the importance of controlling for confounding variables in epidemiological analysis.
+                </p>
+                <p style="margin-top: 25px; font-size: 16px; line-height: 1.9;">
+                    <strong>What Our Results Mean (In Simple Words):</strong><br>
+                    We found a significant positive correlation (r = 0.1971), meaning when vaccination rates went UP, case counts also went UP. This seems backwards! But here's why it makes sense: Vaccination increased over time (2020 to 2022), and during that same period, new variants (Delta, Omicron) caused huge case surges. So both vaccination AND cases increased at the same time - not because vaccination caused cases, but because of timing. This is called "temporal confounding" - when two things happen at the same time but aren't actually related. Think of it like this: More people use umbrellas when it rains, but umbrellas don't cause rain!
+                </p>
+                
+                <div style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-left: 4px solid #667eea; border-radius: 8px;">
+                    <h3 style="color: #667eea; margin-bottom: 20px; font-size: 22px;">Research Context & Comparison with Published Studies</h3>
+                    <p style="font-size: 16px; line-height: 1.9; margin-bottom: 20px;">
+                        Published research by Au (2022) found that <strong>higher vaccination rates predict reduction in SARS-CoV-2 transmission</strong> when using sophisticated statistical methods that control for temporal confounding factors (previous incidence, testing frequency, mask usage, month effects, etc.). 
+                    </p>
+                    <p style="font-size: 16px; line-height: 1.9; margin-bottom: 20px;">
+                        In contrast, our simple correlation analysis (without such controls) finds a positive correlation (r = 0.1971), which demonstrates the exact temporal confounding effect that Au (2022) warned about. The researchers explicitly stated: <em>"Without this transformation, a spurious correlation would occur in which incidence would appear to rise even as vaccination rates increase over the summer."</em>
+                    </p>
+                    <p style="font-size: 16px; line-height: 1.9;">
+                        This contrast highlights the critical importance of controlling for confounding variables in epidemiological analysis. Our findings validate the researchers' warning and demonstrate why sophisticated statistical modeling is essential for drawing accurate conclusions about vaccine effectiveness.
+                    </p>
+                    <p style="margin-top: 20px; font-size: 14px; font-style: italic;">
+                        Source: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8938221/" target="_blank" style="color: #06A77D; font-weight: 600;">Au, J. Higher vaccination rates predict reduction in SARS-CoV-2 transmission across the United States</a> (<em>Infection</em>, 50:1255-1266, PMCID: PMC8938221)
+                    </p>
+                </div>
+                
+                <div style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, rgba(46, 134, 171, 0.1) 0%, rgba(6, 167, 125, 0.1) 100%); border-left: 4px solid #2E86AB; border-radius: 8px;">
+                    <h3 style="color: #2E86AB; margin-bottom: 20px; font-size: 22px;">Next Steps & Future Research Directions</h3>
+                    <p style="font-size: 16px; line-height: 1.9; margin-bottom: 15px;">
+                        <strong>1. Extended Geographic Analysis:</strong> Replicate this analysis across different countries and continents to examine whether the temporal confounding patterns observed in the United States are consistent globally. Different regions may show different relationships depending on variant emergence timing, vaccination rollout speed, and local public health policies.
+                    </p>
+                    <p style="font-size: 16px; line-height: 1.9; margin-bottom: 15px;">
+                        <strong>2. Advanced Statistical Modeling:</strong> Apply the sophisticated statistical methods used in published research (panel data regression with temporal controls, fixed/random effects models) to our dataset to properly account for confounding variables and estimate the true effect of vaccination on transmission reduction.
+                    </p>
+                    <p style="font-size: 16px; line-height: 1.9; margin-bottom: 15px;">
+                        <strong>3. Distribution Fitting:</strong> Fit appropriate probability distributions (e.g., Poisson, Negative Binomial) to weekly case counts to better understand the underlying data generation process and improve statistical modeling accuracy.
+                    </p>
+                    <p style="font-size: 16px; line-height: 1.9;">
+                        <strong>4. Variant-Specific Analysis:</strong> Segment the data by variant periods (Alpha, Delta, Omicron) to examine whether vaccination effectiveness differs across variants and to better control for variant-specific confounding effects.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Chart data
+        const chartData = {
+        "dataCoverage": {
+                "start": "January 26, 2020",
+                "end": "January 01, 2023",
+                "totalDays": 154
+        },
+        "vaccinationTimeline": {
+                "dates": [
+                        "2020-01-26",
+                        "2020-02-02",
+                        "2020-02-09",
+                        "2020-02-16",
+                        "2020-02-23",
+                        "2020-03-01",
+                        "2020-03-08",
+                        "2020-03-15",
+                        "2020-03-22",
+                        "2020-03-29",
+                        "2020-04-05",
+                        "2020-04-12",
+                        "2020-04-19",
+                        "2020-04-26",
+                        "2020-05-03",
+                        "2020-05-10",
+                        "2020-05-17",
+                        "2020-05-24",
+                        "2020-05-31",
+                        "2020-06-07",
+                        "2020-06-14",
+                        "2020-06-21",
+                        "2020-06-28",
+                        "2020-07-05",
+                        "2020-07-12",
+                        "2020-07-19",
+                        "2020-07-26",
+                        "2020-08-02",
+                        "2020-08-09",
+                        "2020-08-16",
+                        "2020-08-23",
+                        "2020-08-30",
+                        "2020-09-06",
+                        "2020-09-13",
+                        "2020-09-20",
+                        "2020-09-27",
+                        "2020-10-04",
+                        "2020-10-11",
+                        "2020-10-18",
+                        "2020-10-25",
+                        "2020-11-01",
+                        "2020-11-08",
+                        "2020-11-15",
+                        "2020-11-22",
+                        "2020-11-29",
+                        "2020-12-06",
+                        "2020-12-13",
+                        "2020-12-20",
+                        "2020-12-27",
+                        "2021-01-03",
+                        "2021-01-10",
+                        "2021-01-17",
+                        "2021-01-24",
+                        "2021-01-31",
+                        "2021-02-07",
+                        "2021-02-14",
+                        "2021-02-21",
+                        "2021-02-28",
+                        "2021-03-07",
+                        "2021-03-14",
+                        "2021-03-21",
+                        "2021-03-28",
+                        "2021-04-04",
+                        "2021-04-11",
+                        "2021-04-18",
+                        "2021-04-25",
+                        "2021-05-02",
+                        "2021-05-09",
+                        "2021-05-16",
+                        "2021-05-23",
+                        "2021-05-30",
+                        "2021-06-06",
+                        "2021-06-13",
+                        "2021-06-20",
+                        "2021-06-27",
+                        "2021-07-04",
+                        "2021-07-11",
+                        "2021-07-18",
+                        "2021-07-25",
+                        "2021-08-01",
+                        "2021-08-08",
+                        "2021-08-15",
+                        "2021-08-22",
+                        "2021-08-29",
+                        "2021-09-05",
+                        "2021-09-12",
+                        "2021-09-19",
+                        "2021-09-26",
+                        "2021-10-03",
+                        "2021-10-10",
+                        "2021-10-17",
+                        "2021-10-24",
+                        "2021-10-31",
+                        "2021-11-07",
+                        "2021-11-14",
+                        "2021-11-21",
+                        "2021-11-28",
+                        "2021-12-05",
+                        "2021-12-12",
+                        "2021-12-19",
+                        "2021-12-26",
+                        "2022-01-02",
+                        "2022-01-09",
+                        "2022-01-16",
+                        "2022-01-23",
+                        "2022-01-30",
+                        "2022-02-06",
+                        "2022-02-13",
+                        "2022-02-20",
+                        "2022-02-27",
+                        "2022-03-06",
+                        "2022-03-13",
+                        "2022-03-20",
+                        "2022-03-27",
+                        "2022-04-03",
+                        "2022-04-10",
+                        "2022-04-17",
+                        "2022-04-24",
+                        "2022-05-01",
+                        "2022-05-08",
+                        "2022-05-15",
+                        "2022-05-22",
+                        "2022-05-29",
+                        "2022-06-05",
+                        "2022-06-12",
+                        "2022-06-19",
+                        "2022-06-26",
+                        "2022-07-03",
+                        "2022-07-10",
+                        "2022-07-17",
+                        "2022-07-24",
+                        "2022-07-31",
+                        "2022-08-07",
+                        "2022-08-14",
+                        "2022-08-21",
+                        "2022-08-28",
+                        "2022-09-04",
+                        "2022-09-11",
+                        "2022-09-18",
+                        "2022-09-25",
+                        "2022-10-02",
+                        "2022-10-09",
+                        "2022-10-16",
+                        "2022-10-23",
+                        "2022-10-30",
+                        "2022-11-06",
+                        "2022-11-13",
+                        "2022-11-20",
+                        "2022-11-27",
+                        "2022-12-04",
+                        "2022-12-11",
+                        "2022-12-18",
+                        "2022-12-25",
+                        "2023-01-01"
+                ],
+                "rates": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.4285714285714287e-05,
+                        0.001757142857142857,
+                        0.007642857142857143,
+                        0.01565714285714286,
+                        0.026857142857142857,
+                        0.04257142857142857,
+                        0.06104285714285714,
+                        0.08194285714285714,
+                        0.10264285714285713,
+                        0.12357142857142857,
+                        0.14091428571428571,
+                        0.15928571428571428,
+                        0.18801428571428572,
+                        0.22254285714285715,
+                        0.2587857142857143,
+                        0.2957142857142857,
+                        0.3332,
+                        0.37288571428571426,
+                        0.40905714285714284,
+                        0.4354,
+                        0.4571,
+                        0.4730714285714286,
+                        0.4866857142857143,
+                        0.5047857142857143,
+                        0.5186714285714286,
+                        0.5272714285714286,
+                        0.5351285714285715,
+                        0.5418714285714287,
+                        0.5479142857142857,
+                        0.5535,
+                        0.5583428571428571,
+                        0.5637571428571428,
+                        0.5704714285714286,
+                        0.5791571428571428,
+                        0.5891000000000001,
+                        0.5991571428571428,
+                        0.6084428571428572,
+                        0.6172000000000001,
+                        0.6253857142857143,
+                        0.6316428571428572,
+                        0.6380999999999999,
+                        0.6433857142857143,
+                        0.6486857142857143,
+                        0.6534571428571427,
+                        0.6577714285714286,
+                        0.6618571428571428,
+                        0.6668857142857142,
+                        0.6726285714285715,
+                        0.6819714285714286,
+                        0.6920571428571429,
+                        0.7000857142857143,
+                        0.7067285714285714,
+                        0.7142857142857143,
+                        0.7212571428571428,
+                        0.7282428571428571,
+                        0.7339857142857144,
+                        0.7399571428571429,
+                        0.7463571428571428,
+                        0.7514000000000001,
+                        0.7554,
+                        0.7584428571428571,
+                        0.7609285714285715,
+                        0.7629857142857143,
+                        0.7647142857142857,
+                        0.7661714285714286,
+                        0.7673,
+                        0.7683,
+                        0.7693142857142857,
+                        0.7703428571428572,
+                        0.7715714285714286,
+                        0.7727571428571428,
+                        0.7738428571428572,
+                        0.7748285714285714,
+                        0.7757857142857142,
+                        0.7766714285714286,
+                        0.7776285714285714,
+                        0.7786,
+                        0.7793428571428571,
+                        0.7801857142857144,
+                        0.780942857142857,
+                        0.7818857142857143,
+                        0.7831857142857143,
+                        0.7841857142857143,
+                        0.7854142857142856,
+                        0.7866714285714286,
+                        0.7878428571428572,
+                        0.7888714285714286,
+                        0.7898,
+                        0.7906857142857142,
+                        0.7914428571428572,
+                        0.7920857142857143,
+                        0.7927285714285714,
+                        0.7938571428571429,
+                        0.795,
+                        0.7962571428571429,
+                        0.7974714285714286,
+                        0.7987285714285715,
+                        0.8000142857142858,
+                        0.8012857142857143,
+                        0.8024571428571428,
+                        0.8035571428571429,
+                        0.8045571428571429,
+                        0.8053285714285714,
+                        0.8059999999999999,
+                        0.806757142857143,
+                        0.8075142857142856,
+                        0.8081571428571428,
+                        0.8086333333333333
+                ],
+                "weekNumbers": [
+                        "Week 1",
+                        "Week 2",
+                        "Week 3",
+                        "Week 4",
+                        "Week 5",
+                        "Week 6",
+                        "Week 7",
+                        "Week 8",
+                        "Week 9",
+                        "Week 10",
+                        "Week 11",
+                        "Week 12",
+                        "Week 13",
+                        "Week 14",
+                        "Week 15",
+                        "Week 16",
+                        "Week 17",
+                        "Week 18",
+                        "Week 19",
+                        "Week 20",
+                        "Week 21",
+                        "Week 22",
+                        "Week 23",
+                        "Week 24",
+                        "Week 25",
+                        "Week 26",
+                        "Week 27",
+                        "Week 28",
+                        "Week 29",
+                        "Week 30",
+                        "Week 31",
+                        "Week 32",
+                        "Week 33",
+                        "Week 34",
+                        "Week 35",
+                        "Week 36",
+                        "Week 37",
+                        "Week 38",
+                        "Week 39",
+                        "Week 40",
+                        "Week 41",
+                        "Week 42",
+                        "Week 43",
+                        "Week 44",
+                        "Week 45",
+                        "Week 46",
+                        "Week 47",
+                        "Week 48",
+                        "Week 49",
+                        "Week 50",
+                        "Week 51",
+                        "Week 52",
+                        "Week 53",
+                        "Week 54",
+                        "Week 55",
+                        "Week 56",
+                        "Week 57",
+                        "Week 58",
+                        "Week 59",
+                        "Week 60",
+                        "Week 61",
+                        "Week 62",
+                        "Week 63",
+                        "Week 64",
+                        "Week 65",
+                        "Week 66",
+                        "Week 67",
+                        "Week 68",
+                        "Week 69",
+                        "Week 70",
+                        "Week 71",
+                        "Week 72",
+                        "Week 73",
+                        "Week 74",
+                        "Week 75",
+                        "Week 76",
+                        "Week 77",
+                        "Week 78",
+                        "Week 79",
+                        "Week 80",
+                        "Week 81",
+                        "Week 82",
+                        "Week 83",
+                        "Week 84",
+                        "Week 85",
+                        "Week 86",
+                        "Week 87",
+                        "Week 88",
+                        "Week 89",
+                        "Week 90",
+                        "Week 91",
+                        "Week 92",
+                        "Week 93",
+                        "Week 94",
+                        "Week 95",
+                        "Week 96",
+                        "Week 97",
+                        "Week 98",
+                        "Week 99",
+                        "Week 100",
+                        "Week 101",
+                        "Week 102",
+                        "Week 103",
+                        "Week 104",
+                        "Week 105",
+                        "Week 106",
+                        "Week 107",
+                        "Week 108",
+                        "Week 109",
+                        "Week 110",
+                        "Week 111",
+                        "Week 112",
+                        "Week 113",
+                        "Week 114",
+                        "Week 115",
+                        "Week 116",
+                        "Week 117",
+                        "Week 118",
+                        "Week 119",
+                        "Week 120",
+                        "Week 121",
+                        "Week 122",
+                        "Week 123",
+                        "Week 124",
+                        "Week 125",
+                        "Week 126",
+                        "Week 127",
+                        "Week 128",
+                        "Week 129",
+                        "Week 130",
+                        "Week 131",
+                        "Week 132",
+                        "Week 133",
+                        "Week 134",
+                        "Week 135",
+                        "Week 136",
+                        "Week 137",
+                        "Week 138",
+                        "Week 139",
+                        "Week 140",
+                        "Week 141",
+                        "Week 142",
+                        "Week 143",
+                        "Week 144",
+                        "Week 145",
+                        "Week 146",
+                        "Week 147",
+                        "Week 148",
+                        "Week 149",
+                        "Week 150",
+                        "Week 151",
+                        "Week 152",
+                        "Week 153",
+                        "Week 154"
+                ]
+        },
+        "threeSourceComparison": {
+                "dates": [
+                        "2020-01-19",
+                        "2020-01-26",
+                        "2020-02-02",
+                        "2020-02-09",
+                        "2020-02-16",
+                        "2020-02-23",
+                        "2020-03-01",
+                        "2020-03-08",
+                        "2020-03-15",
+                        "2020-03-22",
+                        "2020-03-29",
+                        "2020-04-05",
+                        "2020-04-12",
+                        "2020-04-19",
+                        "2020-04-26",
+                        "2020-05-03",
+                        "2020-05-10",
+                        "2020-05-17",
+                        "2020-05-24",
+                        "2020-05-31",
+                        "2020-06-07",
+                        "2020-06-14",
+                        "2020-06-21",
+                        "2020-06-28",
+                        "2020-07-05",
+                        "2020-07-12",
+                        "2020-07-19",
+                        "2020-07-26",
+                        "2020-08-02",
+                        "2020-08-09",
+                        "2020-08-16",
+                        "2020-08-23",
+                        "2020-08-30",
+                        "2020-09-06",
+                        "2020-09-13",
+                        "2020-09-20",
+                        "2020-09-27",
+                        "2020-10-04",
+                        "2020-10-11",
+                        "2020-10-18",
+                        "2020-10-25",
+                        "2020-11-01",
+                        "2020-11-08",
+                        "2020-11-15",
+                        "2020-11-22",
+                        "2020-11-29",
+                        "2020-12-06",
+                        "2020-12-13",
+                        "2020-12-20",
+                        "2020-12-27",
+                        "2021-01-03",
+                        "2021-01-10",
+                        "2021-01-17",
+                        "2021-01-24",
+                        "2021-01-31",
+                        "2021-02-07",
+                        "2021-02-14",
+                        "2021-02-21",
+                        "2021-02-28",
+                        "2021-03-07",
+                        "2021-03-14",
+                        "2021-03-21",
+                        "2021-03-28",
+                        "2021-04-04",
+                        "2021-04-11",
+                        "2021-04-18",
+                        "2021-04-25",
+                        "2021-05-02",
+                        "2021-05-09",
+                        "2021-05-16",
+                        "2021-05-23",
+                        "2021-05-30",
+                        "2021-06-06",
+                        "2021-06-13",
+                        "2021-06-20",
+                        "2021-06-27",
+                        "2021-07-04",
+                        "2021-07-11",
+                        "2021-07-18",
+                        "2021-07-25",
+                        "2021-08-01",
+                        "2021-08-08",
+                        "2021-08-15",
+                        "2021-08-22",
+                        "2021-08-29",
+                        "2021-09-05",
+                        "2021-09-12",
+                        "2021-09-19",
+                        "2021-09-26",
+                        "2021-10-03",
+                        "2021-10-10",
+                        "2021-10-17",
+                        "2021-10-24",
+                        "2021-10-31",
+                        "2021-11-07",
+                        "2021-11-14",
+                        "2021-11-21",
+                        "2021-11-28",
+                        "2021-12-05",
+                        "2021-12-12",
+                        "2021-12-19",
+                        "2021-12-26",
+                        "2022-01-02",
+                        "2022-01-09",
+                        "2022-01-16",
+                        "2022-01-23",
+                        "2022-01-30",
+                        "2022-02-06",
+                        "2022-02-13",
+                        "2022-02-20",
+                        "2022-02-27",
+                        "2022-03-06",
+                        "2022-03-13",
+                        "2022-03-20",
+                        "2022-03-27",
+                        "2022-04-03",
+                        "2022-04-10",
+                        "2022-04-17",
+                        "2022-04-24",
+                        "2022-05-01",
+                        "2022-05-08",
+                        "2022-05-15",
+                        "2022-05-22",
+                        "2022-05-29",
+                        "2022-06-05",
+                        "2022-06-12",
+                        "2022-06-19",
+                        "2022-06-26",
+                        "2022-07-03",
+                        "2022-07-10",
+                        "2022-07-17",
+                        "2022-07-24",
+                        "2022-07-31",
+                        "2022-08-07",
+                        "2022-08-14",
+                        "2022-08-21",
+                        "2022-08-28",
+                        "2022-09-04",
+                        "2022-09-11",
+                        "2022-09-18",
+                        "2022-09-25",
+                        "2022-10-02",
+                        "2022-10-09",
+                        "2022-10-16",
+                        "2022-10-23",
+                        "2022-10-30",
+                        "2022-11-06",
+                        "2022-11-13",
+                        "2022-11-20",
+                        "2022-11-27",
+                        "2022-12-04",
+                        "2022-12-11",
+                        "2022-12-18",
+                        "2022-12-25",
+                        "2023-01-01"
+                ],
+                "weekNumbers": [
+                        "Week 1",
+                        "Week 2",
+                        "Week 3",
+                        "Week 4",
+                        "Week 5",
+                        "Week 6",
+                        "Week 7",
+                        "Week 8",
+                        "Week 9",
+                        "Week 10",
+                        "Week 11",
+                        "Week 12",
+                        "Week 13",
+                        "Week 14",
+                        "Week 15",
+                        "Week 16",
+                        "Week 17",
+                        "Week 18",
+                        "Week 19",
+                        "Week 20",
+                        "Week 21",
+                        "Week 22",
+                        "Week 23",
+                        "Week 24",
+                        "Week 25",
+                        "Week 26",
+                        "Week 27",
+                        "Week 28",
+                        "Week 29",
+                        "Week 30",
+                        "Week 31",
+                        "Week 32",
+                        "Week 33",
+                        "Week 34",
+                        "Week 35",
+                        "Week 36",
+                        "Week 37",
+                        "Week 38",
+                        "Week 39",
+                        "Week 40",
+                        "Week 41",
+                        "Week 42",
+                        "Week 43",
+                        "Week 44",
+                        "Week 45",
+                        "Week 46",
+                        "Week 47",
+                        "Week 48",
+                        "Week 49",
+                        "Week 50",
+                        "Week 51",
+                        "Week 52",
+                        "Week 53",
+                        "Week 54",
+                        "Week 55",
+                        "Week 56",
+                        "Week 57",
+                        "Week 58",
+                        "Week 59",
+                        "Week 60",
+                        "Week 61",
+                        "Week 62",
+                        "Week 63",
+                        "Week 64",
+                        "Week 65",
+                        "Week 66",
+                        "Week 67",
+                        "Week 68",
+                        "Week 69",
+                        "Week 70",
+                        "Week 71",
+                        "Week 72",
+                        "Week 73",
+                        "Week 74",
+                        "Week 75",
+                        "Week 76",
+                        "Week 77",
+                        "Week 78",
+                        "Week 79",
+                        "Week 80",
+                        "Week 81",
+                        "Week 82",
+                        "Week 83",
+                        "Week 84",
+                        "Week 85",
+                        "Week 86",
+                        "Week 87",
+                        "Week 88",
+                        "Week 89",
+                        "Week 90",
+                        "Week 91",
+                        "Week 92",
+                        "Week 93",
+                        "Week 94",
+                        "Week 95",
+                        "Week 96",
+                        "Week 97",
+                        "Week 98",
+                        "Week 99",
+                        "Week 100",
+                        "Week 101",
+                        "Week 102",
+                        "Week 103",
+                        "Week 104",
+                        "Week 105",
+                        "Week 106",
+                        "Week 107",
+                        "Week 108",
+                        "Week 109",
+                        "Week 110",
+                        "Week 111",
+                        "Week 112",
+                        "Week 113",
+                        "Week 114",
+                        "Week 115",
+                        "Week 116",
+                        "Week 117",
+                        "Week 118",
+                        "Week 119",
+                        "Week 120",
+                        "Week 121",
+                        "Week 122",
+                        "Week 123",
+                        "Week 124",
+                        "Week 125",
+                        "Week 126",
+                        "Week 127",
+                        "Week 128",
+                        "Week 129",
+                        "Week 130",
+                        "Week 131",
+                        "Week 132",
+                        "Week 133",
+                        "Week 134",
+                        "Week 135",
+                        "Week 136",
+                        "Week 137",
+                        "Week 138",
+                        "Week 139",
+                        "Week 140",
+                        "Week 141",
+                        "Week 142",
+                        "Week 143",
+                        "Week 144",
+                        "Week 145",
+                        "Week 146",
+                        "Week 147",
+                        "Week 148",
+                        "Week 149",
+                        "Week 150",
+                        "Week 151",
+                        "Week 152",
+                        "Week 153",
+                        "Week 154",
+                        "Week 155"
+                ],
+                "owid": [
+                        0.0,
+                        7.0,
+                        2.0,
+                        11.0,
+                        4.0,
+                        16.0,
+                        33.0,
+                        391.0,
+                        3465.0,
+                        27486.0,
+                        94894.0,
+                        176151.0,
+                        219172.0,
+                        196150.0,
+                        205165.0,
+                        198436.0,
+                        182246.0,
+                        169032.0,
+                        166325.0,
+                        146436.0,
+                        149780.0,
+                        151876.0,
+                        180021.0,
+                        258278.0,
+                        342166.0,
+                        392205.0,
+                        466267.0,
+                        467901.0,
+                        431250.0,
+                        375909.0,
+                        362662.0,
+                        315788.0,
+                        294946.0,
+                        295253.0,
+                        245621.0,
+                        280977.0,
+                        304774.0,
+                        298348.0,
+                        334249.0,
+                        387634.0,
+                        449438.0,
+                        559394.0,
+                        790094.0,
+                        1004845.0,
+                        1175483.0,
+                        1162401.0,
+                        1280932.0,
+                        1468482.0,
+                        1517928.0,
+                        1360122.0,
+                        1380995.0,
+                        1667151.0,
+                        1589955.0,
+                        1265861.0,
+                        1068625.0,
+                        857250.0,
+                        670572.0,
+                        473485.0,
+                        465751.0,
+                        420739.0,
+                        384000.0,
+                        379551.0,
+                        417818.0,
+                        449960.0,
+                        455950.0,
+                        467217.0,
+                        406095.0,
+                        338407.0,
+                        292324.0,
+                        233350.0,
+                        181609.0,
+                        147811.0,
+                        99112.0,
+                        99565.0,
+                        80627.0,
+                        87637.0,
+                        97037.0,
+                        286510.0,
+                        222579.0,
+                        359027.0,
+                        547086.0,
+                        743056.0,
+                        886464.0,
+                        1019966.0,
+                        1094890.0,
+                        1144251.0,
+                        1022570.0,
+                        1037454.0,
+                        852294.0,
+                        755688.0,
+                        681984.0,
+                        582237.0,
+                        508543.0,
+                        526186.0,
+                        510211.0,
+                        557180.0,
+                        676876.0,
+                        592394.0,
+                        751017.0,
+                        834969.0,
+                        899109.0,
+                        1417419.0,
+                        2712038.0,
+                        4682897.0,
+                        5650933.0,
+                        5042888.0,
+                        3789262.0,
+                        2188710.0,
+                        1222112.0,
+                        708156.0,
+                        458272.0,
+                        332509.0,
+                        234332.0,
+                        208740.0,
+                        193469.0,
+                        194464.0,
+                        201192.0,
+                        247939.0,
+                        300721.0,
+                        378549.0,
+                        465658.0,
+                        604955.0,
+                        734495.0,
+                        740720.0,
+                        675627.0,
+                        741044.0,
+                        672256.0,
+                        709637.0,
+                        773772.0,
+                        743769.0,
+                        888229.0,
+                        908695.0,
+                        947983.0,
+                        788051.0,
+                        701618.0,
+                        644925.0,
+                        610329.0,
+                        580363.0,
+                        449509.0,
+                        406901.0,
+                        368725.0,
+                        321234.0,
+                        280584.0,
+                        251280.0,
+                        283734.0,
+                        255156.0,
+                        267304.0,
+                        282897.0,
+                        274984.0,
+                        300171.0,
+                        302599.0,
+                        462223.0,
+                        446014.0,
+                        508009.0,
+                        0.0
+                ],
+                "who": [
+                        0.0,
+                        7.0,
+                        2.0,
+                        11.0,
+                        4.0,
+                        16.0,
+                        33.0,
+                        391.0,
+                        3465.0,
+                        27486.0,
+                        94894.0,
+                        176151.0,
+                        219172.0,
+                        196150.0,
+                        205165.0,
+                        198436.0,
+                        182246.0,
+                        169032.0,
+                        166325.0,
+                        146436.0,
+                        149780.0,
+                        151876.0,
+                        180021.0,
+                        258278.0,
+                        342166.0,
+                        392205.0,
+                        466267.0,
+                        467901.0,
+                        431250.0,
+                        375909.0,
+                        362662.0,
+                        315788.0,
+                        294946.0,
+                        295253.0,
+                        245621.0,
+                        280977.0,
+                        304774.0,
+                        298348.0,
+                        334249.0,
+                        387634.0,
+                        449438.0,
+                        559394.0,
+                        790094.0,
+                        1004845.0,
+                        1175483.0,
+                        1162401.0,
+                        1280932.0,
+                        1468482.0,
+                        1517928.0,
+                        1360122.0,
+                        1380995.0,
+                        1667151.0,
+                        1589955.0,
+                        1265861.0,
+                        1068625.0,
+                        857250.0,
+                        670572.0,
+                        473485.0,
+                        465751.0,
+                        420739.0,
+                        384000.0,
+                        379551.0,
+                        417818.0,
+                        449960.0,
+                        455950.0,
+                        467217.0,
+                        406095.0,
+                        338407.0,
+                        292324.0,
+                        233350.0,
+                        181609.0,
+                        147811.0,
+                        99112.0,
+                        99565.0,
+                        80627.0,
+                        87637.0,
+                        97037.0,
+                        286510.0,
+                        222579.0,
+                        359027.0,
+                        547086.0,
+                        743056.0,
+                        886464.0,
+                        1019966.0,
+                        1094890.0,
+                        1144251.0,
+                        1022570.0,
+                        1037454.0,
+                        852294.0,
+                        755688.0,
+                        681984.0,
+                        582237.0,
+                        508543.0,
+                        526186.0,
+                        510211.0,
+                        557180.0,
+                        676876.0,
+                        592394.0,
+                        751017.0,
+                        834969.0,
+                        899109.0,
+                        1417419.0,
+                        2712038.0,
+                        4682897.0,
+                        5650933.0,
+                        5042888.0,
+                        3789262.0,
+                        2188710.0,
+                        1222112.0,
+                        708156.0,
+                        458272.0,
+                        332509.0,
+                        234332.0,
+                        208740.0,
+                        193469.0,
+                        194464.0,
+                        201192.0,
+                        247939.0,
+                        300721.0,
+                        378549.0,
+                        465658.0,
+                        604955.0,
+                        734495.0,
+                        740720.0,
+                        675627.0,
+                        741044.0,
+                        672256.0,
+                        709637.0,
+                        773772.0,
+                        743769.0,
+                        888229.0,
+                        908695.0,
+                        947983.0,
+                        788051.0,
+                        701618.0,
+                        644925.0,
+                        610329.0,
+                        580363.0,
+                        449509.0,
+                        406901.0,
+                        368725.0,
+                        321234.0,
+                        280584.0,
+                        251280.0,
+                        283734.0,
+                        255156.0,
+                        267304.0,
+                        282897.0,
+                        274984.0,
+                        300171.0,
+                        302599.0,
+                        462223.0,
+                        446014.0,
+                        508009.0,
+                        508009.0
+                ],
+                "nyt": [
+                        5.0,
+                        5.0,
+                        6.0,
+                        1.0,
+                        3.0,
+                        15.0,
+                        58.0,
+                        459.0,
+                        3053.0,
+                        29473.0,
+                        109413.0,
+                        195655.0,
+                        220108.0,
+                        199347.0,
+                        213400.0,
+                        194346.0,
+                        171486.0,
+                        156938.0,
+                        157705.0,
+                        147831.0,
+                        154132.0,
+                        153023.0,
+                        187956.0,
+                        271023.0,
+                        345346.0,
+                        407497.0,
+                        466847.0,
+                        459428.0,
+                        434737.0,
+                        377147.0,
+                        361226.0,
+                        296186.0,
+                        295120.0,
+                        283729.0,
+                        245515.0,
+                        287736.0,
+                        313670.0,
+                        305955.0,
+                        370067.0,
+                        398722.0,
+                        488992.0,
+                        579846.0,
+                        777926.0,
+                        1052533.0,
+                        1199568.0,
+                        1134434.0,
+                        1379793.0,
+                        1541442.0,
+                        1511580.0,
+                        1294310.0,
+                        1490651.0,
+                        1784137.0,
+                        1537280.0,
+                        1193205.0,
+                        1041614.0,
+                        824413.0,
+                        638046.0,
+                        464676.0,
+                        475351.0,
+                        410578.0,
+                        422706.0,
+                        380337.0,
+                        440195.0,
+                        447650.0,
+                        486431.0,
+                        472324.0,
+                        407863.0,
+                        344520.0,
+                        286799.0,
+                        231261.0,
+                        176959.0,
+                        140625.0,
+                        81003.0,
+                        101993.0,
+                        77932.0,
+                        83172.0,
+                        139564.0,
+                        159756.0,
+                        226134.0,
+                        365069.0,
+                        558425.0,
+                        772331.0,
+                        916095.0,
+                        1047723.0,
+                        1098369.0,
+                        1129290.0,
+                        1022674.0,
+                        1037906.0,
+                        839336.0,
+                        748687.0,
+                        675957.0,
+                        585035.0,
+                        508507.0,
+                        510730.0,
+                        515236.0,
+                        587460.0,
+                        655824.0,
+                        502568.0,
+                        849600.0,
+                        836754.0,
+                        929624.0,
+                        1433265.0,
+                        2892635.0,
+                        5029868.0,
+                        5647954.0,
+                        4852909.0,
+                        3659728.0,
+                        2090872.0,
+                        1210730.0,
+                        748868.0,
+                        457020.0,
+                        334243.0,
+                        244652.0,
+                        229267.0,
+                        209927.0,
+                        199840.0,
+                        222773.0,
+                        260191.0,
+                        331666.0,
+                        406829.0,
+                        497924.0,
+                        642137.0,
+                        773298.0,
+                        738702.0,
+                        747272.0,
+                        766240.0,
+                        682748.0,
+                        772334.0,
+                        745463.0,
+                        795665.0,
+                        907802.0,
+                        900886.0,
+                        869658.0,
+                        819727.0,
+                        725267.0,
+                        661104.0,
+                        630933.0,
+                        593720.0,
+                        465210.0,
+                        429749.0,
+                        378896.0,
+                        337455.0,
+                        278747.0,
+                        254265.0,
+                        248345.0,
+                        255598.0,
+                        289672.0,
+                        257892.0,
+                        302756.0,
+                        261443.0,
+                        397835.0,
+                        437099.0,
+                        479455.0,
+                        482808.0,
+                        366618.0
+                ]
+        },
+        "conditionalProbabilities": {
+                "highVax": 1.0,
+                "lowVax": 1.0
+        },
+        "descriptiveStats": {
+                "mean": 652552.7467532468,
+                "median": 438647.0,
+                "std": 815501.5044415786
+        },
+        "bernoulli": {
+                "p_I": 1.0,
+                "p_I_0": 0.0
+        }
+};
+        
+        // Simple line chart function
+        function drawLineChart(canvasId, data, options) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = 400;
+            
+            const padding = { top: 40, right: 40, bottom: 60, left: 80 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            
+            if (!data || data.length === 0) return;
+            
+            const values = data.map(d => d[1]);
+            const minVal = Math.min(...values);
+            const maxVal = Math.max(...values);
+            const range = maxVal - minVal || 1;
+            
+            // Draw grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+            }
+            
+            // Draw line
+            ctx.strokeStyle = options.color || '#2E86AB';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            data.forEach((point, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((point[1] - minVal) / range) * chartHeight;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            
+            // Fill area
+            if (options.fill) {
+                ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+                ctx.lineTo(padding.left, padding.top + chartHeight);
+                ctx.closePath();
+                ctx.fillStyle = options.fillColor || 'rgba(46, 134, 171, 0.2)';
+                ctx.fill();
+            }
+            
+            // Draw threshold line
+            if (options.threshold !== undefined) {
+                const threshY = padding.top + chartHeight - ((options.threshold - minVal) / range) * chartHeight;
+                ctx.strokeStyle = '#dc3545';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(padding.left, threshY);
+                ctx.lineTo(width - padding.right, threshY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Draw points
+            ctx.fillStyle = options.color || '#2E86AB';
+            data.forEach((point, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((point[1] - minVal) / range) * chartHeight;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw labels
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            
+            // Y-axis labels
+            for (let i = 0; i <= 5; i++) {
+                const val = minVal + (range / 5) * (5 - i);
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.fillText(val.toFixed(2), padding.left - 10, y + 4);
+            }
+            
+            // X-axis labels (week numbers)
+            ctx.textAlign = 'center';
+            ctx.font = '11px Inter, sans-serif';
+            const weekLabels = options.weekNumbers || [];
+            const labelStep = Math.max(1, Math.floor(data.length / 10)); // Show ~10 labels
+            for (let i = 0; i < data.length; i += labelStep) {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const label = weekLabels[i] || `Week ${i+1}`;
+                ctx.fillText(label, x, height - 20);
+            }
+            // X-axis title
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText(options.xLabel || 'Week', width / 2, height - 5);
+            
+            // Y-axis label
+            ctx.save();
+            ctx.translate(20, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(options.yLabel || 'Value', 0, 0);
+            ctx.restore();
+        }
+        
+        // Multi-line chart function for comparing 3 data sources
+        function drawMultiLineChart(canvasId, dates, datasets, options) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = 400;
+            
+            const padding = { top: 40, right: 150, bottom: 60, left: 80 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            
+            if (!dates || dates.length === 0) return;
+            
+            // Find min/max across all datasets
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            datasets.forEach(dataset => {
+                dataset.values.forEach(val => {
+                    if (val < minVal) minVal = val;
+                    if (val > maxVal) maxVal = val;
+                });
+            });
+            const range = maxVal - minVal || 1;
+            
+            // Draw grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+            }
+            
+            // Draw lines for each dataset
+            datasets.forEach(dataset => {
+                ctx.strokeStyle = dataset.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                dataset.values.forEach((value, i) => {
+                    const x = padding.left + (chartWidth / (dates.length - 1)) * i;
+                    const y = padding.top + chartHeight - ((value - minVal) / range) * chartHeight;
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+                
+                // Draw points
+                ctx.fillStyle = dataset.color;
+                dataset.values.forEach((value, i) => {
+                    const x = padding.left + (chartWidth / (dates.length - 1)) * i;
+                    const y = padding.top + chartHeight - ((value - minVal) / range) * chartHeight;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            });
+            
+            // Draw legend
+            ctx.font = '14px Inter, sans-serif';
+            datasets.forEach((dataset, i) => {
+                const x = width - padding.right + 10;
+                const y = padding.top + 20 + i * 25;
+                ctx.fillStyle = dataset.color;
+                ctx.fillRect(x, y - 10, 15, 3);
+                ctx.fillStyle = '#2c3e50';
+                ctx.textAlign = 'left';
+                ctx.fillText(dataset.label, x + 20, y);
+            });
+            
+            // Draw labels
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            
+            // Y-axis labels
+            for (let i = 0; i <= 5; i++) {
+                const val = minVal + (range / 5) * (5 - i);
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.fillText(val.toFixed(0), padding.left - 10, y + 4);
+            }
+            
+            // X-axis labels (week numbers)
+            ctx.textAlign = 'center';
+            ctx.font = '11px Inter, sans-serif';
+            const weekLabels = options.weekNumbers || [];
+            const labelStep = Math.max(1, Math.floor(dates.length / 10)); // Show ~10 labels
+            for (let i = 0; i < dates.length; i += labelStep) {
+                const x = padding.left + (chartWidth / (dates.length - 1)) * i;
+                const label = weekLabels[i] || `Week ${i+1}`;
+                ctx.fillText(label, x, height - 20);
+            }
+            // X-axis title
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText(options.xLabel || 'Week', width / 2, height - 5);
+            
+            // Y-axis label
+            ctx.save();
+            ctx.translate(20, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(options.yLabel || 'Value', 0, 0);
+            ctx.restore();
+        }
+        
+        // Enhanced bar chart function for conditional probabilities (better design)
+        function drawBarChart(canvasId, labels, values, colors) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = 400;
+            
+            const padding = { top: 40, right: 40, bottom: 100, left: 80 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            const barWidth = chartWidth / labels.length * 0.6;
+            const barSpacing = chartWidth / labels.length;
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            
+            const maxVal = Math.max(...values);
+            
+            // Draw grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+            }
+            
+            // Draw bars with better styling
+            labels.forEach((label, i) => {
+                const barHeight = (values[i] / maxVal) * chartHeight;
+                const x = padding.left + i * barSpacing + (barSpacing - barWidth) / 2;
+                const y = padding.top + chartHeight - barHeight;
+                
+                // Draw bar with gradient effect
+                const gradient = ctx.createLinearGradient(x, y, x, padding.top + chartHeight);
+                gradient.addColorStop(0, colors[i] || '#2E86AB');
+                gradient.addColorStop(1, colors[i] + 'CC' || '#2E86ABCC');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, y, barWidth, barHeight);
+                
+                // Draw border
+                ctx.strokeStyle = colors[i] || '#2E86AB';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, barWidth, barHeight);
+                
+                // Draw value label on top
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(values[i].toFixed(4), x + barWidth / 2, y - 8);
+                
+                // Draw label below
+                ctx.fillStyle = '#2c3e50';
+                ctx.font = '14px Inter, sans-serif';
+                const labelLines = label.split('\n');
+                labelLines.forEach((line, j) => {
+                    ctx.fillText(line, x + barWidth / 2, padding.top + chartHeight + 25 + j * 18);
+                });
+            });
+            
+            // Draw y-axis labels
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const val = (maxVal / 5) * (5 - i);
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.fillStyle = '#2c3e50';
+                ctx.textAlign = 'right';
+                ctx.font = '12px Inter, sans-serif';
+                ctx.fillText(val.toFixed(2), padding.left - 10, y + 4);
+            }
+            
+            // Draw y-axis title
+            ctx.save();
+            ctx.translate(20, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText('Infection Probability', 0, 0);
+            ctx.restore();
+        }
+        
+        // Initialize charts when page loads
+        window.addEventListener('load', function() {
+            // Chart 1: Vaccination Rate
+            const vaccData = chartData.vaccinationTimeline.dates.map((d, i) => [d, chartData.vaccinationTimeline.rates[i]]);
+            drawLineChart('chart1', vaccData, {
+                color: '#2E86AB',
+                fill: true,
+                fillColor: 'rgba(46, 134, 171, 0.2)',
+                threshold: 0.5,
+                xLabel: 'Week',
+                weekNumbers: chartData.vaccinationTimeline.weekNumbers,
+                yLabel: 'Vaccination Rate'
+            });
+            
+            // Chart 2: Three Source Comparison (Daily Data)
+            drawMultiLineChart('chart2', chartData.threeSourceComparison.dates, [
+                {label: 'OWID', values: chartData.threeSourceComparison.owid, color: '#2E86AB'},
+                {label: 'WHO', values: chartData.threeSourceComparison.who, color: '#F18F01'},
+                {label: 'NY Times', values: chartData.threeSourceComparison.nyt, color: '#06A77D'}
+            ], {
+                xLabel: 'Week',
+                weekNumbers: chartData.threeSourceComparison.weekNumbers,
+                yLabel: 'Weekly New Cases'
+            });
+            
+            // Chart 3: Conditional Probabilities (enhanced design)
+            drawBarChart('chart3', 
+                ['High Vaccination\n(V ≥ 0.5)', 'Low Vaccination\n(V < 0.5)'],
+                [chartData.conditionalProbabilities.highVax, chartData.conditionalProbabilities.lowVax],
+                ['#06A77D', '#F18F01']
+            );
+        });
+    </script>
+</body>
+</html>
