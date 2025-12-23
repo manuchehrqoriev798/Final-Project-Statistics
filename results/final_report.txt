@@ -1,0 +1,75 @@
+================================================================================
+COVID-19 VACCINATION RATES VS INFECTION OUTCOMES
+Final Statistical Analysis Report
+================================================================================
+
+Report Generated: 2025-12-23 18:44:30
+
+EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+This analysis examines the relationship between vaccination rates and infection outcomes using COVID-19 data from Our World in Data (OWID) and the World Health Organization (WHO). The study employs basic probability theory, including Bernoulli and Binomial distributions, to assess whether higher vaccination levels are associated with lower infection probabilities.
+
+METHODOLOGY
+--------------------------------------------------------------------------------
+1. Data Sources:
+   - Our World in Data (OWID): Comprehensive COVID-19 dataset
+   - World Health Organization (WHO): Global COVID-19 surveillance data
+
+2. Variables:
+   - V: Vaccination indicator (vaccination rate as proportion)
+   - I: Infection indicator (I=1 if new cases > 0, I=0 otherwise)
+
+3. Statistical Methods:
+   - Bernoulli distribution for binary outcomes
+   - Binomial distribution for aggregated periods (weekly/monthly)
+   - Conditional probability analysis
+   - Two-sample proportion tests
+
+RESULTS
+--------------------------------------------------------------------------------
+
+1. Bernoulli Parameters:
+   - Infection Probability (p_I): 0.7208
+   - Vaccination Rate (p_V): 0.5473
+   - Variance of I: 0.2012
+   - Variance of V: 0.2478
+
+2. Conditional Probabilities:
+   - P(I=1 | V ≥ 0.5): 0.6190
+   - P(I=1 | V < 0.5): 0.9583
+   - Difference: -0.3393
+   - Sample sizes: High=168, Low=72
+
+3. Binomial Distribution Analysis (Weekly):
+   - Expected weekly infections: 5.046
+   - Actual weekly average: 0.721
+   - Expected variance: 1.409
+   - Actual variance: 0.202
+
+4. Statistical Tests:
+   - Test: Two-sample proportion test (z-test)
+   - Z-statistic: -5.3695
+   - P-value: 0.0000
+   - Significant (α=0.05): True
+
+CONCLUSIONS
+--------------------------------------------------------------------------------
+The analysis demonstrates that higher vaccination levels are associated with lower infection probabilities. Specifically:
+
+- Days with high vaccination (V ≥ 0.5) show an infection probability of 0.6190
+- Days with low vaccination (V < 0.5) show an infection probability of 0.9583
+- This represents a reduction of 0.3393 in infection probability for high-vaccination days
+
+The statistical analysis supports the research hypothesis using simple probability tools and fully reproducible datasets. The findings are consistent with epidemiological expectations that vaccination reduces the probability of infection.
+
+DATA QUALITY NOTES
+--------------------------------------------------------------------------------
+- Data was cleaned and processed to handle missing values
+- Vaccination data was forward-filled to maintain continuity
+- Missing case counts were set to 0
+- Data was aggregated by day, week, and month for analysis
+- All calculations are reproducible using the provided code
+
+================================================================================
+END OF REPORT
+================================================================================
